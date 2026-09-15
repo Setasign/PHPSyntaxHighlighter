@@ -13,13 +13,6 @@ token as `<span>` elements, wrapping the collected positions in `<a>` tags. Usin
 links (and the tokenizer for the actual output) keeps the highlighted HTML a deterministic, 1:1 representation
 of the original source.
 
-While resolving links, the highlighter keeps track of:
-
-- namespaces and `use` imports (plain, grouped, and function imports; aliases; fully qualified, qualified and
-  unqualified names)
-- variable types assigned via `new` and via return types of chained method/function calls
-- variable scoping across functions, closures (including `use (...)` and `use (&...)`) and arrow functions
-
 ## Requirements
 
 - PHP >= 8.5
