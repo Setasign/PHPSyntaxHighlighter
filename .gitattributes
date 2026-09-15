@@ -1,2 +1,4 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+*.php text eol=lf diff=php
+*.phtml text eol=lf
+*.json text eol=lf
+*.lock binary

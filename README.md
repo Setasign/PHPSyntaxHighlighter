@@ -1,2 +1,109 @@
-# PHPSyntaxHighlighter
+# PHP Syntax Highlighter
 
+A PHP syntax highlighter, written in PHP, that automatically links classes, methods, class constants and
+functions to their documentation — the official PHP manual by default, with support for linking to your own,
+additional manuals as well.
+
+## How it works
+
+The source code is parsed into an AST with [nikic/php-parser](https://github.com/nikic/PHP-Parser). A visitor
+walks that AST once to figure out, for every relevant position in the source, which URL (if any) it should link
+to. Afterward, the original source is tokenized with PHP's native `PhpToken::tokenize()` and rendered token by
+token as `<span>` elements, wrapping the collected positions in `<a>` tags. Using the AST only for *finding*
+links (and the tokenizer for the actual output) keeps the highlighted HTML a deterministic, 1:1 representation
+of the original source.
+
+While resolving links, the highlighter keeps track of:
+
+- namespaces and `use` imports (plain, grouped, and function imports; aliases; fully qualified, qualified and
+  unqualified names)
+- variable types assigned via `new` and via return types of chained method/function calls
+- variable scoping across functions, closures (including `use (...)` and `use (&...)`) and arrow functions
+
+## Requirements
+
+- PHP >= 8.5
+- [nikic/php-parser](https://github.com/nikic/PHP-Parser) ^5.8
+
+## Installation
+
+```
+composer require setasign/php-syntax-highlighter
+```
+
+## Usage
+
+```php
+use setasign\PhpSyntaxHighlighter\PhpSyntaxHighlighter;
+
+$highlighter = new PhpSyntaxHighlighter();
+
+$html = $highlighter->highlight(<<<'PHP'
+<?php
+
+$date = new DateTime('now');
+echo $date->format(DateTime::ATOM);
+PHP);
+```
+
+The returned HTML wraps every token in a `<span class="php-token php-token-*">` and adds an `<a href="..."
+class="manual-link" target="_blank">` around every linkable class, method, class constant and function name.
+
+### Styling
+
+`PhpSyntaxHighlighter::getStyling()` generates a matching CSS stylesheet for the token classes:
+
+```php
+echo PhpSyntaxHighlighter::getStyling();
+```
+
+Pass your own `array<int|string, string>` (token constant, or `'default'`/`'char'`, mapped to a color) to
+customize the colors.
+
+### Linking to additional manuals
+
+Links are resolved through a `LinkBuilder`, which asks a prioritized list of manuals — each implementing
+`Manuals\ManualLinkBuilderInterface` — whether they know a given class, method, class constant or function.
+The built-in `Manuals\PhpManualByReflection` links everything that PHP's Reflection API reports as internal to
+the official PHP manual. You can register additional manuals, for example to link your own library's classes to
+your own documentation:
+
+```php
+use setasign\PhpSyntaxHighlighter\PhpSyntaxHighlighter;
+use setasign\PhpSyntaxHighlighter\Manuals\ManualLinkBuilderInterface;
+
+class MyLibraryManual implements ManualLinkBuilderInterface
+{
+    // ...implement getClassLink(), getClassMethodLink(), getClassConstantLink(),
+    // getFunctionLink(), getFunctionReturnType() and getMethodReturnType()
+}
+
+$highlighter = new PhpSyntaxHighlighter();
+$highlighter->linkBuilder->addManual(new MyLibraryManual());
+```
+
+Manuals are asked in the order they were added; the first manual that returns a non-null result wins.
+`getFunctionReturnType()`/`getMethodReturnType()` should return `null` when the function/method is unknown to a
+manual (as opposed to an empty array, which means "known, but no linkable return type"), so that the next
+manual in line still gets a chance.
+
+## Known limitations
+
+- Global constants (as opposed to class constants) are not linked, and `use const` imports are ignored.
+- Union and intersection types are treated the same way: every type contained in them is considered a
+  candidate, without honoring the "any of" vs. "all of" semantics.
+
+## Development
+
+```
+composer install
+
+composer tests    # run the test suite (PHPUnit)
+composer cs       # check the coding style (PHP_CodeSniffer)
+composer cbf      # automatically fix the coding style
+composer phpstan  # run static analysis (PHPStan)
+```
+
+## License
+
+[MIT](LICENSE)

@@ -1,0 +1,8 @@
+parameters:
+	level: 9
+	paths:
+		- src
+		#- tests
+	bootstrapFiles:
+		- vendor-bin/phpstan/bootstrap.php
+	treatPhpDocTypesAsCertain: false

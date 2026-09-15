@@ -1,0 +1,52 @@
+{
+    "name": "setasign/php-syntax-highlighter",
+    "type": "library",
+    "description": "",
+    "minimum-stability": "stable",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Maximilian Kresse",
+            "email": "maximilian.kresse@setasign.com"
+        }
+    ],
+    "require": {
+        "php": "^8.5",
+
+        "nikic/php-parser": "^5.8",
+        "symfony/console": "^6.0"
+    },
+    "require-dev": {
+        "bamarni/composer-bin-plugin": "^1.8"
+    },
+
+    "autoload": {
+        "psr-4": {
+            "setasign\\PhpSyntaxHighlighter\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "setasign\\PhpSyntaxHighlighter\\Tests\\": "tests/"
+        }
+    },
+     "config": {
+        "allow-plugins": {
+            "bamarni/composer-bin-plugin": true
+        }
+    },
+    "extra": {
+        "bamarni-bin": {
+            "bin-links": true,
+            "target-directory": "vendor-bin",
+            "forward-command": true
+        }
+    },
+    "scripts": {
+        "tests": "@php vendor/bin/phpunit",
+        "cs": "@php vendor/bin/phpcs",
+        "phpstan": "@php vendor/bin/phpstan analyse",
+
+        "cbf": "@php vendor/bin/phpcbf"
+    }
+}
