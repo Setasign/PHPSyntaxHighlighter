@@ -1,7 +1,7 @@
 # PHP Syntax Highlighter
 
 A PHP syntax highlighter, written in PHP, that automatically links classes, methods, class constants and
-functions to their documentation — the official PHP manual by default, with support for linking to your own,
+functions to their documentation (the official PHP manual by default), with support for linking to your own,
 additional manuals as well.
 
 ## How it works
@@ -54,7 +54,7 @@ class="manual-link" target="_blank">` around every linkable class, method, class
 `PhpSyntaxHighlighter::getStyling()` generates a matching CSS stylesheet for the token classes:
 
 ```php
-echo PhpSyntaxHighlighter::getStyling();
+echo '<style>' . PhpSyntaxHighlighter::getStyling() . '</style>';
 ```
 
 Pass your own `array<int|string, string>` (token constant, or `'default'`/`'char'`, mapped to a color) to
@@ -92,17 +92,6 @@ manual in line still gets a chance.
 - Global constants (as opposed to class constants) are not linked, and `use const` imports are ignored.
 - Union and intersection types are treated the same way: every type contained in them is considered a
   candidate, without honoring the "any of" vs. "all of" semantics.
-
-## Development
-
-```
-composer install
-
-composer tests    # run the test suite (PHPUnit)
-composer cs       # check the coding style (PHP_CodeSniffer)
-composer cbf      # automatically fix the coding style
-composer phpstan  # run static analysis (PHPStan)
-```
 
 ## License
 

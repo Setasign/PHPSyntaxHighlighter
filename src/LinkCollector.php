@@ -33,6 +33,23 @@ class LinkCollector extends NodeVisitorAbstract
         []
     ];
 
+    /**
+     * Local classes
+     *
+     * @var array<string, array{
+     *     parent: ?string,
+     *     traits: string[],
+     *     properties: array<string, string[]>,
+     *     methodReturnTypes: array<string, string[]>
+     * }>
+     */
+    private array $classes = [];
+
+    /**
+     * @var array<int, ?string>
+     */
+    private array $classNameStack = [];
+
     /** @var array<int, string> Map of start offset in the source code -> URL */
     public array $linkMap = [];
 
@@ -57,9 +74,14 @@ class LinkCollector extends NodeVisitorAbstract
             return null;
         }
 
+        if ($node instanceof Node\Stmt\ClassLike) {
+            $this->handleClassLike($node);
+            return null;
+        }
+
         // handle new variable scopes
         if ($node instanceof Node\Stmt\Function_ || $node instanceof Node\Stmt\ClassMethod) {
-            $this->variableScopes[] = [];
+            $this->handleFunctionLikeScope($node);
             return null;
         } elseif ($node instanceof Node\Expr\Closure) {
             $this->handleClosure($node);
@@ -129,6 +151,14 @@ class LinkCollector extends NodeVisitorAbstract
             \array_pop($this->namespaces);
         }
 
+        if ($node instanceof Node\Stmt\ClassLike) {
+            if ($this->classNameStack === []) {
+                throw new Exception('Invalid leaving class scope!');
+            }
+
+            \array_pop($this->classNameStack);
+        }
+
         if (
             $node instanceof Node\Stmt\Function_
             || $node instanceof Node\Stmt\ClassMethod
@@ -168,8 +198,17 @@ class LinkCollector extends NodeVisitorAbstract
                 $methodName = $expr->name->toString();
                 $types = [];
                 foreach ($classes as $class) {
-                    foreach ($this->linkBuilder->getMethodReturnType($class, $methodName) as $type) {
+                    foreach ($this->lookupInClassHierarchy($class, 'methodReturnTypes', $methodName) as $type) {
                         $types[] = $type;
+                    }
+                    foreach ($this->classAndRelatedCandidates($class) as $candidate) {
+                        $candidateTypes = $this->linkBuilder->getMethodReturnType($candidate, $methodName);
+                        if ($candidateTypes !== []) {
+                            foreach ($candidateTypes as $type) {
+                                $types[] = $type;
+                            }
+                            break;
+                        }
                     }
                 }
                 return $types;
@@ -181,6 +220,18 @@ class LinkCollector extends NodeVisitorAbstract
             $types = [];
             if ($functionName !== null) {
                 foreach ($this->linkBuilder->getFunctionReturnType($functionName) as $type) {
+                    $types[] = $type;
+                }
+            }
+            return $types;
+        }
+
+        // Local property reads ($this->dateTime, or (new Test())->dateTime)
+        if ($expr instanceof Node\Expr\PropertyFetch && $expr->name instanceof Node\Identifier) {
+            $propertyName = $expr->name->toString();
+            $types = [];
+            foreach ($this->extractTypeFromExpr($expr->var) as $class) {
+                foreach ($this->lookupInClassHierarchy($class, 'properties', $propertyName) as $type) {
                     $types[] = $type;
                 }
             }
@@ -227,6 +278,18 @@ class LinkCollector extends NodeVisitorAbstract
                     return [$prefix . \substr($className, \strlen($usedAlias))];
                 }
             } else {
+                if ($className === 'self' || $className === 'static') {
+                    $currentClassName = $this->currentClassName();
+                    return $currentClassName !== null ? [$currentClassName] : [];
+                }
+                if ($className === 'parent') {
+                    $currentClassName = $this->currentClassName();
+                    $parentClassName = $currentClassName !== null
+                        ? ($this->classes[$currentClassName]['parent'] ?? null)
+                        : null;
+                    return $parentClassName !== null ? [$parentClassName] : [];
+                }
+
                 if (isset($this->namespaces[\array_key_last($this->namespaces)]['classes'][$className])) {
                     return [$this->namespaces[\array_key_last($this->namespaces)]['classes'][$className]];
                 }
@@ -276,6 +339,62 @@ class LinkCollector extends NodeVisitorAbstract
         return null;
     }
 
+    private function currentClassName(): ?string
+    {
+        if ($this->classNameStack === []) {
+            return null;
+        }
+
+        return $this->classNameStack[\array_key_last($this->classNameStack)];
+    }
+
+    /**
+     * @param string $class
+     * @param 'properties'|'methodReturnTypes' $key
+     * @param string $name
+     * @return string[]
+     */
+    private function lookupInClassHierarchy(string $class, string $key, string $name): array
+    {
+        $visited = [];
+        $current = $class;
+        while ($current !== null && !isset($visited[$current])) {
+            $visited[$current] = true;
+            if (isset($this->classes[$current][$key][$name])) {
+                return $this->classes[$current][$key][$name];
+            }
+            $current = $this->classes[$current]['parent'] ?? null;
+        }
+        return [];
+    }
+
+    /**
+     * @return string[]
+     */
+    private function classAndRelatedCandidates(string $className): array
+    {
+        $result = [];
+        $visited = [];
+        $queue = [$className];
+        while ($queue !== []) {
+            $current = \array_shift($queue);
+            if (isset($visited[$current])) {
+                continue;
+            }
+            $visited[$current] = true;
+            $result[] = $current;
+
+            $parent = $this->classes[$current]['parent'] ?? null;
+            if ($parent !== null) {
+                $queue[] = $parent;
+            }
+            foreach ($this->classes[$current]['traits'] ?? [] as $trait) {
+                $queue[] = $trait;
+            }
+        }
+        return $result;
+    }
+
     private function handleNamespace(Node\Stmt\Namespace_ $node): void
     {
         $this->namespaces[] = [
@@ -288,7 +407,6 @@ class LinkCollector extends NodeVisitorAbstract
 
     private function handleUse(Node\Stmt\Use_|Node\Stmt\GroupUse $node): void
     {
-        // For GroupUse (use Foo\{Bar, Baz};), the prefix must be prepended to each individual name.
         $prefix = $node instanceof Node\Stmt\GroupUse ? $node->prefix->toString() . '\\' : '';
 
         foreach ($node->uses as $useNode) {
@@ -312,10 +430,122 @@ class LinkCollector extends NodeVisitorAbstract
         }
     }
 
+    private function handleClassLike(Node\Stmt\ClassLike $node): void
+    {
+        $localName = $node->name?->toString();
+        $currentNamespace = $this->namespaces[\array_key_last($this->namespaces)]['namespace'];
+        $className = match (true) {
+            $localName === null => null,
+            $currentNamespace !== null => $currentNamespace . '\\' . $localName,
+            default => $localName,
+        };
+
+        if ($className !== null) {
+            $parentClassName = null;
+            if ($node instanceof Node\Stmt\Class_ && $node->extends !== null) {
+                $parentClassName = \array_first($this->resolveClassName($node->extends));
+            }
+
+            $this->classes[$className] = [
+                'parent' => $parentClassName,
+                'traits' => [],
+                'properties' => [],
+                'methodReturnTypes' => [],
+            ];
+            $this->classNameStack[] = $className;
+
+            $properties = [];
+            $methodReturnTypes = [];
+            $traits = [];
+            foreach ($node->stmts as $stmt) {
+                if ($stmt instanceof Node\Stmt\TraitUse) {
+                    foreach ($stmt->traits as $traitName) {
+                        $resolvedTraitName = \array_first($this->resolveClassName($traitName));
+                        if ($resolvedTraitName === null) {
+                            continue;
+                        }
+
+                        $traits[] = $resolvedTraitName;
+
+                        if (!isset($this->classes[$resolvedTraitName])) {
+                            continue;
+                        }
+
+                        $methodReturnTypes = [
+                            ...$methodReturnTypes,
+                            ...$this->classes[$resolvedTraitName]['methodReturnTypes'],
+                        ];
+
+                        // Only classes and traits can declare (promoted) properties.
+                        if ($node instanceof Node\Stmt\Class_ || $node instanceof Node\Stmt\Trait_) {
+                            $properties = [...$properties, ...$this->classes[$resolvedTraitName]['properties']];
+                        }
+                    }
+                    continue;
+                }
+
+                if ($stmt instanceof Node\Stmt\ClassMethod && $stmt->returnType !== null) {
+                    $methodReturnTypes[$stmt->name->toString()] = $this->resolveClassName($stmt->returnType);
+                }
+
+                // Only classes and traits can declare (promoted) properties.
+                if (!($node instanceof Node\Stmt\Class_ || $node instanceof Node\Stmt\Trait_)) {
+                    continue;
+                }
+
+                if ($stmt instanceof Node\Stmt\Property && $stmt->type !== null) {
+                    $types = $this->resolveClassName($stmt->type);
+                    foreach ($stmt->props as $prop) {
+                        $properties[$prop->name->toString()] = $types;
+                    }
+                } elseif ($stmt instanceof Node\Stmt\ClassMethod && $stmt->name->toString() === '__construct') {
+                    foreach ($stmt->params as $param) {
+                        if (
+                            $param->isPromoted()
+                            && $param->type !== null
+                            && $param->var instanceof Node\Expr\Variable
+                            && \is_string($param->var->name)
+                        ) {
+                            $properties[$param->var->name] = $this->resolveClassName($param->type);
+                        }
+                    }
+                }
+            }
+
+            $this->classes[$className]['properties'] = $properties;
+            $this->classes[$className]['methodReturnTypes'] = $methodReturnTypes;
+            $this->classes[$className]['traits'] = $traits;
+        } else {
+            $this->classNameStack[] = $className;
+        }
+    }
+
+    private function handleFunctionLikeScope(Node\Stmt\Function_|Node\Stmt\ClassMethod $node): void
+    {
+        $newScope = [];
+
+        // Inside a non-static method, $this always refers to the current (local) class.
+        if ($node instanceof Node\Stmt\ClassMethod && !$node->isStatic()) {
+            $currentClassName = $this->currentClassName();
+            if ($currentClassName !== null) {
+                $newScope['this'] = [$currentClassName];
+            }
+        }
+
+        $this->variableScopes[] = $newScope;
+    }
+
     private function handleClosure(Node\Expr\Closure $node): void
     {
         $currentScope = $this->variableScopes[\array_key_last($this->variableScopes)];
         $newScope = [];
+
+        // Unlike other variables, $this is available inside a closure without an explicit "use" -
+        // unless the closure is declared "static", in which case it has no $this at all.
+        if (!$node->static && isset($currentScope['this'])) {
+            $newScope['this'] = $currentScope['this'];
+        }
+
         foreach ($node->uses as $useNode) {
             $varName = $useNode->var->name;
             if (!\is_string($varName)) {
@@ -337,9 +567,12 @@ class LinkCollector extends NodeVisitorAbstract
         if ($node->var instanceof Node\Expr\Variable && \is_string($node->var->name)) {
             $varName = $node->var->name;
             $classNames = $this->extractTypeFromExpr($node->expr);
-            if (\count($classNames) === 1 && ($link = $this->linkBuilder->getClassLink($classNames[0])) !== null) {
+            if (\count($classNames) === 1) {
                 $this->variableScopes[\array_key_last($this->variableScopes)][$varName] = $classNames;
-                $this->linkMap[$node->getStartFilePos()] = $link;
+                $link = $this->linkBuilder->getClassLink($classNames[0]);
+                if ($link !== null) {
+                    $this->linkMap[$node->getStartFilePos()] = $link;
+                }
             } else {
                 unset($this->variableScopes[\array_key_last($this->variableScopes)][$varName]);
             }
@@ -445,9 +678,11 @@ class LinkCollector extends NodeVisitorAbstract
             $pos = $node->name->getStartFilePos();
             $link = null;
             foreach ($classNames as $className) {
-                $link = $this->linkBuilder->getClassMethodLink($className, $methodName);
-                if ($link !== null) {
-                    break;
+                foreach ($this->classAndRelatedCandidates($className) as $candidate) {
+                    $link = $this->linkBuilder->getClassMethodLink($candidate, $methodName);
+                    if ($link !== null) {
+                        break 2;
+                    }
                 }
             }
             if ($link !== null) {
@@ -468,7 +703,12 @@ class LinkCollector extends NodeVisitorAbstract
                 $className = \array_first($this->resolveClassName($node->class));
                 $link = null;
                 if ($className !== null) {
-                    $link = $this->linkBuilder->getClassConstantLink($className, $constName);
+                    foreach ($this->classAndRelatedCandidates($className) as $candidate) {
+                        $link = $this->linkBuilder->getClassConstantLink($candidate, $constName);
+                        if ($link !== null) {
+                            break;
+                        }
+                    }
                 }
                 if ($link !== null) {
                     $this->linkMap[$pos] = $link;

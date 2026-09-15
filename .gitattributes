@@ -1,4 +1,4 @@
 *.php text eol=lf diff=php
-*.phtml text eol=lf
+*.html text eol=lf
 *.json text eol=lf
 *.lock binary

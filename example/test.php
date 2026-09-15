@@ -16,9 +16,24 @@ error_reporting(E_ALL);
 
 require '../vendor/autoload.php';
 
+if (!isset($_GET['file'])) {
+    echo '<ul>';
+    foreach (glob(__DIR__ . '/../tests/functional/CompareData/*.php') as $file) {
+        $fileName = basename($file, '.php');
+        echo '<li><a href="?file=' . $fileName . '">' . $fileName . '</li>';
+    }
+    echo '</ul>';
+    return;
+}
+echo '<a href="?">Back to file menu</a><br/>';
+if (!file_exists(__DIR__ . '/../tests/functional/CompareData/' . $_GET['file'] . '.php') || \str_contains($_GET['file'], '..')) {
+    echo 'File not found.';
+    return;
+}
+
 $highlighter = new PhpSyntaxHighlighter();
 $highlighter->linkBuilder->addManual(new CompareDataManualBuilder());
-$code = file_get_contents(__DIR__ . '/../tests/functional/CompareData/local-class.php');
+$code = file_get_contents(__DIR__ . '/../tests/functional/CompareData/' .  $_GET['file'] . '.php');
 
 $styling = PhpSyntaxHighlighter::getStyling();
 echo '<style>

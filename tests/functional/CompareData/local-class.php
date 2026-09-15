@@ -10,6 +10,8 @@ use DateTimeZone;
 
 $test = new \DateTime();
 class Test implements \DateTimeInterface {
+    use TestTrait;
+
     private DateTimeInterface $test;
 
     public function __construct(private DateTimeInterface $dateTime) {
@@ -57,4 +59,15 @@ class Test implements \DateTimeInterface {
     {
         return $this->dateTime->getMicrosecond();
     }
+
+    public function test()
+    {
+        echo $this->test->format('c');
+        $this->getTimezone()->getLocation();
+    }
 }
+
+$t = new Test($test);
+$t->getTimezone()->getLocation();
+
+$t->test();

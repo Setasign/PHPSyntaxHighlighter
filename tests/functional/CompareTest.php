@@ -9,7 +9,7 @@ use PHPUnit\Framework\ExpectationFailedException;
 use PHPUnit\Framework\TestCase;
 use setasign\PhpSyntaxHighlighter\PhpSyntaxHighlighter;
 
-class CompareTests extends TestCase
+class CompareTest extends TestCase
 {
     public static function getCompareData(): array
     {
@@ -19,9 +19,6 @@ class CompareTests extends TestCase
         foreach ($files as $file) {
             $expectedOutputFile = \dirname($file) . '/' . \basename($file, '.php') . '.html';
             $testName = \substr($file, \strlen($testDirectory));
-            if ($testName === 'local-class.php') {
-                continue;
-            }
             $result[$testName] = [
                 \file_get_contents($file),
                 (
@@ -67,7 +64,11 @@ class CompareTests extends TestCase
             $highlighter->linkBuilder->addManual(new CompareDataManualBuilder());
             $actualResult = self::prettyPrintTokenHtml($highlighter->highlight($code));
             $this->assertEquals($expectedResult, $actualResult);
-        } catch (ExpectationFailedException) {
+        } catch (ExpectationFailedException $e) {
+            if (!isset($_SERVER['argv']) || \array_last($_SERVER['argv']) !== '--teamcity') {
+                throw $e;
+            }
+            // phpstorm cuts the content so a usable comparison isn't possible - this is a workaround for that
             $escape = function (string $string): string {
                 return \str_replace(
                     ['|', "'", "\n", "\r", ']', '['],
@@ -75,7 +76,6 @@ class CompareTests extends TestCase
                     $string,
                 );
             };
-            // phpstorm cuts the content so a usable comparison isn't possible - this is a workaround for that
             echo '##teamcity[testFailed name=\'testCompare with data set "' . $escape($testName) . '"\''
                 . ' message=\'Failed asserting that two strings are equal.\' duration=\'16\' type=\'comparisonFailure\''
                 . ' actual=\'' . $escape($actualResult) . '\' expected=\'' . $escape($expectedResult) . '\''

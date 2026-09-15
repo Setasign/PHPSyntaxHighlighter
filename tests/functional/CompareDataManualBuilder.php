@@ -15,9 +15,11 @@ class CompareDataManualBuilder implements ManualLinkBuilderInterface
             'Some\Other\DateTime' => 'https://www.example-manual.com/api/date-time',
             'App\DateTimeImmutable' => 'https://www.example-manual.com/api/app.date-time-immutable',
             'Foo\Bar' => 'https://www.example-manual.com/api/foo.bar',
+            'Foo\Bar\TestTrait' => 'https://www.example-manual.com/api/foo.bar-trait',
             'Foo\Baz' => 'https://www.example-manual.com/api/foo.baz',
             'Foo\Baz\Test\Blub' => 'https://www.example-manual.com/api/foo.baz.test.blub',
             'Foo\Blub' => 'https://www.example-manual.com/api/foo.blub',
+            'SomethingTrait' => 'https://www.example-manual.com/api/something-trait',
             default => null,
         };
     }
@@ -41,6 +43,12 @@ class CompareDataManualBuilder implements ManualLinkBuilderInterface
             case 'Foo\Blub':
                 $result = match ($methodName) {
                     'add' => 'https://www.example-manual.com/api/foo.blub-add',
+                    default => null
+                };
+                break;
+            case 'SomethingTrait':
+                $result = match ($methodName) {
+                    'doSomething' => 'https://www.example-manual.com/api/something-trait',
                     default => null
                 };
                 break;
@@ -94,6 +102,12 @@ class CompareDataManualBuilder implements ManualLinkBuilderInterface
             case 'Foo\Blub':
                 $result = match ($methodName) {
                     'add' => ['Foo\Bar'],
+                    default => null,
+                };
+                break;
+            case 'SomethingTrait':
+                $result = match ($methodName) {
+                    'doSomething' => ['Foo\Bar'],
                     default => null,
                 };
                 break;

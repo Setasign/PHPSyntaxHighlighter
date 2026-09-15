@@ -7,8 +7,8 @@ namespace setasign\PhpSyntaxHighlighter\Manuals;
 interface ManualLinkBuilderInterface
 {
     /**
-     * Returns the link to the manual of the given class. If the class isn't found in this manual, this method should
-     * return null.
+     * Returns the link to the manual of the given class/interface/trait.
+     * If the class isn't found in this manual, this method should return null.
      *
      * @param string $className
      * @return string|null
