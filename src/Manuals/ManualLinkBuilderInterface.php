@@ -45,8 +45,8 @@ interface ManualLinkBuilderInterface
     public function getFunctionLink(string $functionName): ?string;
 
     /**
-     * Returns the all documented return object types of the given function. If the function isn't found in this manual,
-     * this method should return null.
+     * Returns the all documented return class types of the given function. All classnames should be without a leading
+     * `\`. If the function isn't found in this manual, this method should return null.
      *
      * @param string $functionName
      * @return null|string[]
@@ -54,8 +54,8 @@ interface ManualLinkBuilderInterface
     public function getFunctionReturnType(string $functionName): ?array;
 
     /**
-     * Returns the all documented return object types of the given method. If the method isn't found in this manual,
-     * this method should return null.
+     * Returns the all documented return class types of the given method. All classnames should be without a leading
+     * `\`. If the method isn't found in this manual, this method should return null.
      *
      * @param string $className
      * @param string $methodName

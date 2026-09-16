@@ -45,6 +45,9 @@ class PhpManualByReflection implements ManualLinkBuilderInterface
         );
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getClassLink(string $className): ?string
     {
         if (!\class_exists($className) && !\interface_exists($className)) {
@@ -60,6 +63,9 @@ class PhpManualByReflection implements ManualLinkBuilderInterface
         return null;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getClassMethodLink(string $className, string $methodName): ?string
     {
         if (
@@ -79,6 +85,9 @@ class PhpManualByReflection implements ManualLinkBuilderInterface
         return null;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getClassConstantLink(string $className, string $constantName): ?string
     {
         if (!\class_exists($className) && !\interface_exists($className)) {
@@ -98,6 +107,9 @@ class PhpManualByReflection implements ManualLinkBuilderInterface
         return null;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getFunctionLink(string $functionName): ?string
     {
         if (!\function_exists($functionName)) {
@@ -114,8 +126,7 @@ class PhpManualByReflection implements ManualLinkBuilderInterface
     }
 
     /**
-     * @param string $functionName
-     * @return null|string[]
+     * @inheritDoc
      */
     public function getFunctionReturnType(string $functionName): ?array
     {
@@ -135,9 +146,7 @@ class PhpManualByReflection implements ManualLinkBuilderInterface
     }
 
     /**
-     * @param string $className
-     * @param string $methodName
-     * @return null|string[]
+     * @inheritDoc
      */
     public function getMethodReturnType(string $className, string $methodName): ?array
     {
