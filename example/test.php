@@ -35,10 +35,8 @@ $highlighter = new PhpSyntaxHighlighter();
 $highlighter->linkBuilder->addManual(new CompareDataManualBuilder());
 $code = file_get_contents(__DIR__ . '/../tests/functional/CompareData/' .  $_GET['file'] . '.php');
 
-$styling = PhpSyntaxHighlighter::getStyling();
-echo '<style>
-' . $styling . '
-</style>';
+echo '<style>' . PhpSyntaxHighlighter::getStyling() . '</style>';
+//echo '<link rel="stylesheet" href="/example-style.css">';
 echo '<pre><code>';
 echo $highlighter
     ->highlight($code);

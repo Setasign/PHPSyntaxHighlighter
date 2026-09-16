@@ -36,6 +36,7 @@ $date = new DateTime('now');
 echo $date->format(DateTime::ATOM);
 PHP);
 ```
+An opening `<?php` tag is optionally.
 
 The returned HTML wraps every token in a `<span class="php-token php-token-*">` and adds an `<a href="..."
 class="manual-link" target="_blank">` around every linkable class, method, class constant and function name.

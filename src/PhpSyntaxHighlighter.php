@@ -25,7 +25,14 @@ class PhpSyntaxHighlighter
         $this->linkBuilder->addManual(new PhpManualByReflection());
     }
 
-    public function highlight(string $code): string
+    /**
+     * @param string $code
+     * @param array<string, string> $typeHints An array of type hints for variables.
+     *                                         E.g. `['dateTime' => 'Foo\DateTime']`
+     * @return string
+     * @throws Exception
+     */
+    public function highlight(string $code, array $typeHints = []): string
     {
         $hasOpenTag = \str_starts_with($code, '<?php');
         if (!$hasOpenTag) {
@@ -36,7 +43,7 @@ class PhpSyntaxHighlighter
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ParentConnectingVisitor());
 
-        $collector = new LinkCollector($this->linkBuilder);
+        $collector = new LinkCollector($this->linkBuilder, $typeHints);
         $traverser->addVisitor($collector);
 
         try {

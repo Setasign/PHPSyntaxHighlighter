@@ -55,7 +55,26 @@ class LinkCollector extends NodeVisitorAbstract
 
     public function __construct(
         private LinkBuilder $linkBuilder,
+        array $typeHints = []
     ) {
+        foreach ($typeHints as $varName => $classNames) {
+            if (\str_starts_with($varName, '$')) {
+                $varName = \substr($varName, 1);
+            }
+            if (is_array($classNames)) {
+                if (!\array_all($classNames, 'is_string')) {
+                    throw new \InvalidArgumentException('Invalid type hints!');
+                }
+            } else {
+                if (!\is_string($classNames)) {
+                    throw new \InvalidArgumentException('Invalid type hints!');
+                }
+                $classNames = [$classNames];
+            }
+            $classNames = \array_map(fn (string $className) => \ltrim($className, '\\'), $classNames);
+
+            $this->variableScopes[0][$varName] = $classNames;
+        }
     }
 
     /**

@@ -83,4 +83,21 @@ class CompareTest extends TestCase
             $this->fail('Failed asserting that two strings are equal.');
         }
     }
+
+    public function testCompareWithTypehint()
+    {
+        $highlighter = new PhpSyntaxHighlighter();
+        $code = 'echo $date->format("c");';
+        $expectedResult = '<span class="php-token php-token-t-echo">echo</span>'
+            . '<span class="php-token php-token-t-whitespace"> </span>'
+            . '<span class="php-token php-token-t-variable">'
+            . '<a href="https://www.php.net/manual/en/class.datetime.php" target="_blank" class="manual-link">$date</a>'
+            . '</span><span class="php-token php-token-t-object-operator">-&gt;</span>'
+            . '<span class="php-token php-token-t-string">'
+            . '<a href="https://www.php.net/manual/en/datetime.format.php" target="_blank" class="manual-link">'
+            . 'format</a></span><span class="php-token php-token-char">(</span>'
+            . '<span class="php-token php-token-t-constant-encapsed-string">&quot;c&quot;</span>'
+            . '<span class="php-token php-token-char">)</span><span class="php-token php-token-char">;</span>';
+        $this->assertEquals($expectedResult, $highlighter->highlight($code, ['date' => 'DateTime']));
+    }
 }
