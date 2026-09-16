@@ -27,6 +27,11 @@ class PhpSyntaxHighlighter
 
     public function highlight(string $code): string
     {
+        $hasOpenTag = \str_starts_with($code, '<?php');
+        if (!$hasOpenTag) {
+            $code = "<?php\n" . $code;
+        }
+
         $parser = new ParserFactory()->createForVersion($this->phpVersion);
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ParentConnectingVisitor());
@@ -46,7 +51,11 @@ class PhpSyntaxHighlighter
 
         $linkMap = $collector->linkMap;
         $output = '';
-        foreach (\PhpToken::tokenize($code) as $token) {
+        $tokens = \PhpToken::tokenize($code);
+        if (!$hasOpenTag) {
+            $currentOffset += \strlen(\array_shift($tokens)->text);
+        }
+        foreach ($tokens as $token) {
             $text = $token->text;
             $tokenOffset = $currentOffset;
             $currentOffset += \strlen($text);

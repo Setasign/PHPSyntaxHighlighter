@@ -32,8 +32,6 @@ use setasign\PhpSyntaxHighlighter\PhpSyntaxHighlighter;
 $highlighter = new PhpSyntaxHighlighter();
 
 $html = $highlighter->highlight(<<<'PHP'
-<?php
-
 $date = new DateTime('now');
 echo $date->format(DateTime::ATOM);
 PHP);
