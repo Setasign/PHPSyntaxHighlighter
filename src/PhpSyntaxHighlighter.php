@@ -80,6 +80,8 @@ class PhpSyntaxHighlighter
     }
 
     /**
+     * Generates a styling definition matching to the given colors. The method is mainly for debugging purpose.
+     *
      * @param array<int|'default'|'char',string>|null $colors
      * @return string
      */

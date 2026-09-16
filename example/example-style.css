@@ -1,0 +1,31 @@
+.php-token {
+    color: #007700;
+}
+.manual-link {
+    color: inherit !important;
+    text-decoration: none;
+}
+.php-token.php-token-t-comment {
+    color: #FF8000;
+}
+.php-token.php-token-t-doc-comment {
+    color: #FF8000;
+}
+.php-token.php-token-t-variable {
+    color: #0000BB;
+}
+.php-token.php-token-t-string {
+    color: #0000BB;
+}
+.php-token.php-token-t-name-qualified {
+    color: #0000BB;
+}
+.php-token.php-token-t-constant-encapsed-string {
+    color: #DD0000;
+}
+.php-token.php-token-t-inline-html {
+    color: #000000;
+}
+.php-token.php-token-t-encapsed-and-whitespace {
+    color: #DD0000;
+}
