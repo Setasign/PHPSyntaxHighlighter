@@ -18,6 +18,8 @@ echo '<style>' . PhpSyntaxHighlighter::getStyling() . '</style>';
 
 $highlighter = new PhpSyntaxHighlighter();
 $code = 'echo $date->format("c");
+$date = new \DateTimeImmutable();
+$date->format("c");
 echo new DateTime()->format("c");
 ';
 echo '<pre><code>' . $highlighter->highlight($code, ['date' => 'DateTime']) . '</code></pre>';

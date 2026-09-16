@@ -27,6 +27,11 @@ class LinkCollector extends NodeVisitorAbstract
     ];
 
     /**
+     * @var array<string, string[]>
+     */
+    private array $typeHints = [];
+
+    /**
      * @var non-empty-array<int, array<string, string[]>>
      */
     private array $variableScopes = [
@@ -72,8 +77,7 @@ class LinkCollector extends NodeVisitorAbstract
                 $classNames = [$classNames];
             }
             $classNames = \array_map(fn (string $className) => \ltrim($className, '\\'), $classNames);
-
-            $this->variableScopes[0][$varName] = $classNames;
+            $this->typeHints[$varName] = $classNames;
         }
     }
 
@@ -258,6 +262,9 @@ class LinkCollector extends NodeVisitorAbstract
         }
 
         if ($expr instanceof Node\Expr\Variable && \is_string($expr->name)) {
+            if (\array_key_exists($expr->name, $this->typeHints)) {
+                return $this->typeHints[$expr->name];
+            }
             return $this->variableScopes[\array_key_last($this->variableScopes)][$expr->name] ?? [];
         }
         return [];
@@ -585,9 +592,16 @@ class LinkCollector extends NodeVisitorAbstract
     {
         if ($node->var instanceof Node\Expr\Variable && \is_string($node->var->name)) {
             $varName = $node->var->name;
-            $classNames = $this->extractTypeFromExpr($node->expr);
-            if (\count($classNames) === 1) {
-                $this->variableScopes[\array_key_last($this->variableScopes)][$varName] = $classNames;
+            if (\array_key_exists($varName, $this->typeHints)) {
+                $classNames = $this->typeHints[$varName];
+            } else {
+                $classNames = $this->extractTypeFromExpr($node->expr);
+                if ($classNames !== []) {
+                    $this->variableScopes[\array_key_last($this->variableScopes)][$varName] = $classNames;
+                }
+            }
+
+            if ($classNames !== []) {
                 $link = $this->linkBuilder->getClassLink($classNames[0]);
                 if ($link !== null) {
                     $this->linkMap[$node->getStartFilePos()] = $link;
@@ -610,19 +624,23 @@ class LinkCollector extends NodeVisitorAbstract
             return;
         }
 
-        $var = $node->var->name;
-        if (!\is_string($var)) {
+        $varName = $node->var->name;
+        if (!\is_string($varName)) {
+            return;
+        }
+
+        if (\array_key_exists($varName, $this->typeHints)) {
             return;
         }
 
         if ($node->type === null) {
             if ($node->default !== null) {
                 $types = $this->extractTypeFromExpr($node->default);
-                $this->variableScopes[\array_key_last($this->variableScopes)][$var] = $types;
+                $this->variableScopes[\array_key_last($this->variableScopes)][$varName] = $types;
             }
             return;
         }
-        $this->variableScopes[\array_key_last($this->variableScopes)][$var] = $this->resolveClassName($node->type);
+        $this->variableScopes[\array_key_last($this->variableScopes)][$varName] = $this->resolveClassName($node->type);
     }
 
     private function handleVariable(Node\Expr\Variable $node): void
@@ -633,7 +651,11 @@ class LinkCollector extends NodeVisitorAbstract
             if (!\is_string($varName)) {
                 return;
             }
-            $variableTypes = $this->variableScopes[\array_key_last($this->variableScopes)][$varName] ?? [];
+            if (\array_key_exists($varName, $this->typeHints)) {
+                $variableTypes = $this->typeHints[$varName];
+            } else {
+                $variableTypes = $this->variableScopes[\array_key_last($this->variableScopes)][$varName] ?? [];
+            }
             foreach ($variableTypes as $variableType) {
                 $link = $this->linkBuilder->getClassLink($variableType);
                 if ($link !== null) {

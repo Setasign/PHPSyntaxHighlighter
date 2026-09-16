@@ -27,8 +27,8 @@ class PhpSyntaxHighlighter
 
     /**
      * @param string $code
-     * @param array<string, string> $typeHints An array of type hints for variables.
-     *                                         E.g. `['dateTime' => 'Foo\DateTime']`
+     * @param array<string, string|string[]> $typeHints An array of type hints for variables. Type hints ignore all
+     *        scopes and are ALWAYS linked to the type. E.g. `['$dateTime' => 'Foo\DateTime']`
      * @return string
      * @throws Exception
      */
