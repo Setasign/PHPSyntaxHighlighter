@@ -8,6 +8,13 @@ use PhpParser\Node;
 use PhpParser\NodeVisitorAbstract;
 use setasign\PhpSyntaxHighlighter\Manuals\LinkBuilder;
 
+/**
+ * Class LinkCollector
+ *
+ * @phpstan-type VariableTypeHints array<string, string|string[]>
+ * @phpstan-type ClassTypeHints array<string, string>
+ * @phpstan-type FunctionTypeHints array<string, string>
+ */
 class LinkCollector extends NodeVisitorAbstract
 {
     /**
@@ -27,7 +34,7 @@ class LinkCollector extends NodeVisitorAbstract
     ];
 
     /**
-     * @var array<string, string[]>
+     * @var array{variables: VariableTypeHints, classes: ClassTypeHints, functions: FunctionTypeHints}
      */
     private array $typeHints = [];
 
@@ -58,27 +65,73 @@ class LinkCollector extends NodeVisitorAbstract
     /** @var array<int, string> Map of start offset in the source code -> URL */
     public array $linkMap = [];
 
+    /**
+     * @param LinkBuilder $linkBuilder
+     * @param array{variables?: VariableTypeHints, classes?: ClassTypeHints, functions?: FunctionTypeHints} $typeHints
+     */
     public function __construct(
         private LinkBuilder $linkBuilder,
         array $typeHints = []
     ) {
-        foreach ($typeHints as $varName => $classNames) {
+        $this->typeHints = $this->validateAndParseTypeHints($typeHints);
+    }
+
+    /**
+     * @param array{variables?: VariableTypeHints, classes?: ClassTypeHints, functions?: FunctionTypeHints} $typeHints
+     */
+    private function validateAndParseTypeHints(array $typeHints): array
+    {
+        $result = [
+            'variables' => [],
+            'classes' => [],
+            'functions' => [],
+        ];
+        foreach ($typeHints['variables'] ?? [] as $varName => $classNames) {
+            if (!\is_string($varName)) {
+                throw new \InvalidArgumentException('Invalid variable type hints! $varName isn\'t a string.');
+            }
             if (\str_starts_with($varName, '$')) {
                 $varName = \substr($varName, 1);
             }
-            if (is_array($classNames)) {
-                if (!\array_all($classNames, 'is_string')) {
-                    throw new \InvalidArgumentException('Invalid type hints!');
-                }
-            } else {
-                if (!\is_string($classNames)) {
-                    throw new \InvalidArgumentException('Invalid type hints!');
-                }
+            if (!is_array($classNames)) {
                 $classNames = [$classNames];
             }
+            if (!\array_all($classNames, fn ($x) => \is_string($x))) {
+                throw new \InvalidArgumentException('Invalid variable type hints! Contains a non-string.');
+            }
             $classNames = \array_map(fn (string $className) => \ltrim($className, '\\'), $classNames);
-            $this->typeHints[$varName] = $classNames;
+            $result['variables'][$varName] = $classNames;
         }
+
+        foreach ($typeHints['classes'] ?? [] as $alias => $className) {
+            if (!\is_string($alias) || !\preg_match('~^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$~', $alias)) {
+                throw new \InvalidArgumentException(
+                    'Invalid class type hints! $alias isn\'t a string or contain invalid characters.'
+                );
+            }
+            if (!\is_string($className)) {
+                throw new \InvalidArgumentException(
+                    'Invalid class type hints! $className isn\'t a string.'
+                );
+            }
+            $result['classes'][$alias] = $className;
+        }
+
+        foreach ($typeHints['functions'] ?? [] as $alias => $functionName) {
+            if (!\is_string($alias) || !\preg_match('~^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$~', $alias)) {
+                throw new \InvalidArgumentException(
+                    'Invalid function type hints! $alias isn\'t a string or contain invalid characters.'
+                );
+            }
+            if (!\is_string($functionName)) {
+                throw new \InvalidArgumentException(
+                    'Invalid function type hints! $className isn\'t a string.'
+                );
+            }
+            $result['functions'][$alias] = $functionName;
+        }
+
+        return $result;
     }
 
     /**
@@ -262,8 +315,8 @@ class LinkCollector extends NodeVisitorAbstract
         }
 
         if ($expr instanceof Node\Expr\Variable && \is_string($expr->name)) {
-            if (\array_key_exists($expr->name, $this->typeHints)) {
-                return $this->typeHints[$expr->name];
+            if (\array_key_exists($expr->name, $this->typeHints['variables'])) {
+                return $this->typeHints['variables'][$expr->name];
             }
             return $this->variableScopes[\array_key_last($this->variableScopes)][$expr->name] ?? [];
         }
@@ -299,6 +352,10 @@ class LinkCollector extends NodeVisitorAbstract
 
             if ($node->isQualified()) {
                 $usedAlias = $node->getFirst();
+                if (isset($this->typeHints['classes'][$usedAlias])) {
+                    $prefix = $this->typeHints['classes'][$usedAlias];
+                    return [$prefix . \substr($className, \strlen($usedAlias))];
+                }
                 if (isset($this->namespaces[\array_key_last($this->namespaces)]['classes'][$usedAlias])) {
                     $prefix = $this->namespaces[\array_key_last($this->namespaces)]['classes'][$usedAlias];
                     return [$prefix . \substr($className, \strlen($usedAlias))];
@@ -314,6 +371,10 @@ class LinkCollector extends NodeVisitorAbstract
                         ? ($this->classes[$currentClassName]['parent'] ?? null)
                         : null;
                     return $parentClassName !== null ? [$parentClassName] : [];
+                }
+
+                if (isset($this->typeHints['classes'][$className])) {
+                    return [$this->typeHints['classes'][$className]];
                 }
 
                 if (isset($this->namespaces[\array_key_last($this->namespaces)]['classes'][$className])) {
@@ -341,11 +402,20 @@ class LinkCollector extends NodeVisitorAbstract
 
         if ($name->isQualified()) {
             $usedAlias = $name->getFirst();
+            if (isset($this->typeHints['classes'][$usedAlias])) {
+                $prefix = $this->typeHints['classes'][$usedAlias];
+                return $prefix . \substr($functionName, \strlen($usedAlias));
+            }
+
             if (isset($this->namespaces[\array_key_last($this->namespaces)]['classes'][$usedAlias])) {
                 $prefix = $this->namespaces[\array_key_last($this->namespaces)]['classes'][$usedAlias];
                 return $prefix . \substr($functionName, \strlen($usedAlias));
             }
         } else {
+            if (isset($this->typeHints['functions'][$functionName])) {
+                return $this->typeHints['functions'][$functionName];
+            }
+
             if (isset($this->namespaces[\array_key_last($this->namespaces)]['functions'][$functionName])) {
                 return $this->namespaces[\array_key_last($this->namespaces)]['functions'][$functionName];
             }
@@ -592,8 +662,8 @@ class LinkCollector extends NodeVisitorAbstract
     {
         if ($node->var instanceof Node\Expr\Variable && \is_string($node->var->name)) {
             $varName = $node->var->name;
-            if (\array_key_exists($varName, $this->typeHints)) {
-                $classNames = $this->typeHints[$varName];
+            if (\array_key_exists($varName, $this->typeHints['variables'])) {
+                $classNames = $this->typeHints['variables'][$varName];
             } else {
                 $classNames = $this->extractTypeFromExpr($node->expr);
                 if ($classNames !== []) {
@@ -629,7 +699,7 @@ class LinkCollector extends NodeVisitorAbstract
             return;
         }
 
-        if (\array_key_exists($varName, $this->typeHints)) {
+        if (\array_key_exists($varName, $this->typeHints['variables'])) {
             return;
         }
 
@@ -651,8 +721,8 @@ class LinkCollector extends NodeVisitorAbstract
             if (!\is_string($varName)) {
                 return;
             }
-            if (\array_key_exists($varName, $this->typeHints)) {
-                $variableTypes = $this->typeHints[$varName];
+            if (\array_key_exists($varName, $this->typeHints['variables'])) {
+                $variableTypes = $this->typeHints['variables'][$varName];
             } else {
                 $variableTypes = $this->variableScopes[\array_key_last($this->variableScopes)][$varName] ?? [];
             }

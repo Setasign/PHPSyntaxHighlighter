@@ -84,7 +84,7 @@ class CompareTest extends TestCase
         }
     }
 
-    public function testCompareWithTypehint()
+    public function testCompareWithVariableTypehint()
     {
         $highlighter = new PhpSyntaxHighlighter();
         $code = 'echo $date->format("c");';
@@ -98,6 +98,48 @@ class CompareTest extends TestCase
             . 'format</a></span><span class="php-token php-token-char">(</span>'
             . '<span class="php-token php-token-t-constant-encapsed-string">&quot;c&quot;</span>'
             . '<span class="php-token php-token-char">)</span><span class="php-token php-token-char">;</span>';
-        $this->assertEquals($expectedResult, $highlighter->highlight($code, ['date' => 'DateTime']));
+        $this->assertEquals($expectedResult, $highlighter->highlight($code, ['variables' => ['date' => 'DateTime']]));
+    }
+
+    public function testCompareWithClassTypehint()
+    {
+        $highlighter = new PhpSyntaxHighlighter();
+        $code = 'echo new Blub()->format("c");';
+        $expectedResult = '<span class="php-token php-token-t-echo">echo</span>'
+            . '<span class="php-token php-token-t-whitespace"> </span>'
+            . '<span class="php-token php-token-t-new">new</span>'
+            . '<span class="php-token php-token-t-whitespace"> </span>'
+            . '<span class="php-token php-token-t-string">'
+            . '<a href="https://www.php.net/manual/en/class.datetime.php" target="_blank" class="manual-link">Blub</a>'
+            . '</span><span class="php-token php-token-char">(</span><span class="php-token php-token-char">)</span>'
+            . '<span class="php-token php-token-t-object-operator">-&gt;</span>'
+            . '<span class="php-token php-token-t-string">'
+            . '<a href="https://www.php.net/manual/en/datetime.format.php" target="_blank" class="manual-link">format'
+            . '</a></span><span class="php-token php-token-char">(</span>'
+            . '<span class="php-token php-token-t-constant-encapsed-string">&quot;c&quot;</span>'
+            . '<span class="php-token php-token-char">)</span><span class="php-token php-token-char">;</span>';
+        $this->assertEquals($expectedResult, $highlighter->highlight($code, ['classes' => ['Blub' => 'DateTime']]));
+    }
+
+    public function testCompareWithFunctionTypehint()
+    {
+        $highlighter = new PhpSyntaxHighlighter();
+        $code = 'echo blub_create()->format("c");';
+        $expectedResult = '<span class="php-token php-token-t-echo">echo</span>'
+            . '<span class="php-token php-token-t-whitespace"> </span>'
+            . '<span class="php-token php-token-t-string">'
+            . '<a href="https://www.php.net/manual/en/function.date-create.php" target="_blank" class="manual-link">'
+            . 'blub_create</a>'
+            . '</span><span class="php-token php-token-char">(</span><span class="php-token php-token-char">)</span>'
+            . '<span class="php-token php-token-t-object-operator">-&gt;</span>'
+            . '<span class="php-token php-token-t-string">'
+            . '<a href="https://www.php.net/manual/en/datetime.format.php" target="_blank" class="manual-link">format'
+            . '</a></span><span class="php-token php-token-char">(</span>'
+            . '<span class="php-token php-token-t-constant-encapsed-string">&quot;c&quot;</span>'
+            . '<span class="php-token php-token-char">)</span><span class="php-token php-token-char">;</span>';
+        $this->assertEquals(
+            $expectedResult,
+            $highlighter->highlight($code, ['functions' => ['blub_create' => 'date_create']])
+        );
     }
 }

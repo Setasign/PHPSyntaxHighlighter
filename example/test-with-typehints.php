@@ -20,6 +20,21 @@ $highlighter = new PhpSyntaxHighlighter();
 $code = 'echo $date->format("c");
 $date = new \DateTimeImmutable();
 $date->format("c");
+$test->format("c");
 echo new DateTime()->format("c");
+
+new Blub()->format("c");
+blub_create()->format("c");
 ';
-echo '<pre><code>' . $highlighter->highlight($code, ['date' => 'DateTime']) . '</code></pre>';
+echo '<pre><code>' . $highlighter->highlight($code, [
+    'variables' => [
+        'date' => 'DateTime',
+        '$test' => '\DateTimeImmutable',
+    ],
+    'classes' => [
+        'Blub' => 'DateTime'
+    ],
+    'functions' => [
+        'blub_create' => 'date_create'
+    ]
+]) . '</code></pre>';

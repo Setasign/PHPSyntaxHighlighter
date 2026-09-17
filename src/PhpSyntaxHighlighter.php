@@ -11,6 +11,13 @@ use PhpParser\PhpVersion;
 use setasign\PhpSyntaxHighlighter\Manuals\LinkBuilder;
 use setasign\PhpSyntaxHighlighter\Manuals\PhpManualByReflection;
 
+/**
+ * Class PhpSyntaxHighlighter
+ *
+ * @phpstan-type VariableTypeHints array<string, string|string[]>
+ * @phpstan-type ClassTypeHints array<string, string>
+ * @phpstan-type FunctionTypeHints array<string, string>
+ */
 class PhpSyntaxHighlighter
 {
     public LinkBuilder $linkBuilder;
@@ -27,8 +34,9 @@ class PhpSyntaxHighlighter
 
     /**
      * @param string $code
-     * @param array<string, string|string[]> $typeHints An array of type hints for variables. Type hints ignore all
-     *        scopes and are ALWAYS linked to the type. E.g. `['$dateTime' => 'Foo\DateTime']`
+     * @param array{variables?: VariableTypeHints, classes?: ClassTypeHints, functions?: FunctionTypeHints} $typeHints
+     *        An array of type hints. Type hints ignore all scopes and are ALWAYS linked to the type.
+     *        E.g. `['variables' => ['$dateTime' => 'Foo\DateTime']]`
      * @return string
      * @throws Exception
      */
