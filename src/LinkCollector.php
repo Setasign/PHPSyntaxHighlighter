@@ -682,6 +682,29 @@ class LinkCollector extends NodeVisitorAbstract
             } else {
                 unset($this->variableScopes[\array_key_last($this->variableScopes)][$varName]);
             }
+            return;
+        }
+
+        if (
+            $node->var instanceof Node\Expr\PropertyFetch
+            && $node->var->var instanceof Node\Expr\Variable
+            && $node->var->var->name === 'this'
+            && $node->var->name instanceof Node\Identifier
+        ) {
+            $currentClassName = $this->currentClassName();
+            if ($currentClassName === null) {
+                return;
+            }
+
+            $propertyName = $node->var->name->toString();
+            if (isset($this->classes[$currentClassName]['properties'][$propertyName])) {
+                return;
+            }
+
+            $types = $this->extractTypeFromExpr($node->expr);
+            if ($types !== []) {
+                $this->classes[$currentClassName]['properties'][$propertyName] = $types;
+            }
         }
     }
 
