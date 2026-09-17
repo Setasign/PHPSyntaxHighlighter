@@ -68,6 +68,7 @@ class LinkCollector extends NodeVisitorAbstract
     /**
      * @param LinkBuilder $linkBuilder
      * @param array{variables?: VariableTypeHints, classes?: ClassTypeHints, functions?: FunctionTypeHints} $typeHints
+     * @throws \InvalidArgumentException
      */
     public function __construct(
         private LinkBuilder $linkBuilder,
@@ -79,6 +80,7 @@ class LinkCollector extends NodeVisitorAbstract
     /**
      * @param array{variables?: VariableTypeHints, classes?: ClassTypeHints, functions?: FunctionTypeHints} $typeHints
      * @return array{variables: array<string, string[]>, classes: ClassTypeHints, functions: FunctionTypeHints}
+     * @throws \InvalidArgumentException
      */
     private function validateAndParseTypeHints(array $typeHints): array
     {
