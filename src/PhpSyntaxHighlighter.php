@@ -39,10 +39,11 @@ class PhpSyntaxHighlighter
      *        E.g. `['variables' => ['$dateTime' => 'Foo\DateTime']]`
      * @return string
      * @throws Exception
+     * @throws \InvalidArgumentException
      */
     public function highlight(string $code, array $typeHints = []): string
     {
-        $hasOpenTag = \str_starts_with($code, '<?php');
+        $hasOpenTag = \stripos($code, '<?php') === 0;
         if (!$hasOpenTag) {
             $code = "<?php\n" . $code;
         }
