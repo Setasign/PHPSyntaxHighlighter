@@ -67,7 +67,7 @@ class PhpSyntaxHighlighter
         $linkMap = $collector->linkMap;
         $output = '';
         $tokens = \PhpToken::tokenize($code);
-        if (!$hasOpenTag) {
+        if (!$hasOpenTag && $tokens !== []) {
             $currentOffset += \strlen(\array_shift($tokens)->text);
         }
         foreach ($tokens as $token) {

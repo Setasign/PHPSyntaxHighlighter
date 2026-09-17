@@ -34,9 +34,9 @@ class LinkCollector extends NodeVisitorAbstract
     ];
 
     /**
-     * @var array{variables: VariableTypeHints, classes: ClassTypeHints, functions: FunctionTypeHints}
+     * @var array{variables: array<string, string[]>, classes: ClassTypeHints, functions: FunctionTypeHints}
      */
-    private array $typeHints = [];
+    private array $typeHints;
 
     /**
      * @var non-empty-array<int, array<string, string[]>>
@@ -78,6 +78,7 @@ class LinkCollector extends NodeVisitorAbstract
 
     /**
      * @param array{variables?: VariableTypeHints, classes?: ClassTypeHints, functions?: FunctionTypeHints} $typeHints
+     * @return array{variables: array<string, string[]>, classes: ClassTypeHints, functions: FunctionTypeHints}
      */
     private function validateAndParseTypeHints(array $typeHints): array
     {
@@ -93,7 +94,7 @@ class LinkCollector extends NodeVisitorAbstract
             if (\str_starts_with($varName, '$')) {
                 $varName = \substr($varName, 1);
             }
-            if (!is_array($classNames)) {
+            if (!\is_array($classNames)) {
                 $classNames = [$classNames];
             }
             if (!\array_all($classNames, fn ($x) => \is_string($x))) {
