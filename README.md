@@ -2,7 +2,16 @@
 
 A PHP syntax highlighter, written in PHP, that automatically links classes, methods, class constants and
 functions to their documentation (the official PHP manual by default), with support for linking to your own,
-additional manuals as well.
+additional manuals as well. The PHP Syntax Highlighter will only highlight PHP code (and there is no 
+intent to add more languages).
+
+## Motivation
+
+Our main business at Setasign are the PHP libraries [SetaPDF and FPDI](https://www.setasign.com/products/).
+For these products we have our [own manual](https://manuals.setasign.com/) with an api reference and executable
+code examples. We wanted to highlight the code in the examples and be able to link the code to the api
+reference (like in your IDE). There are many code highlighter out there but most of them prefer to highlight 
+as many languages as possible instead of specialized features like this to link to the api reference.
 
 ## How it works
 
@@ -36,7 +45,7 @@ $date = new DateTime('now');
 echo $date->format(DateTime::ATOM);
 PHP);
 ```
-An opening `<?php` tag is optionally.
+An opening `<?php` tag is optional.
 
 The returned HTML wraps every token in a `<span class="php-token php-token-*">` and adds an `<a href="..."
 class="manual-link" target="_blank">` around every linkable class, method, class constant and function name.
@@ -54,8 +63,8 @@ A very simple example styling can be found in `example/example-style.css`.
 
 ### Linking to additional manuals
 
-Links are resolved through a `LinkBuilder`, which asks a prioritized list of manuals — each implementing
-`Manuals\ManualLinkBuilderInterface` — whether they know a given class, method, class constant or function.
+Links are resolved through a `LinkBuilder`, which asks a prioritized list of manuals each implementing
+`Manuals\ManualLinkBuilderInterface` whether they know a given class, method, class constant or function.
 The built-in `Manuals\PhpManualByReflection` links everything that PHP's Reflection API reports as internal to
 the official PHP manual. You can register additional manuals, for example to link your own library's classes to
 your own documentation:
@@ -79,11 +88,41 @@ Manuals are asked in the order they were added; the first manual that returns a 
 manual (as opposed to an empty array, which means "known, but no linkable return type"), so that the next
 manual in line still gets a chance.
 
+### Type hints
+
+The highlighter tries to infer the type of every variable, property and method/function return value from the
+code itself, including classes, interfaces, traits and enums that are declared in the highlighted source itself
+(e.g. following an `extends`/`implements`/`use TraitName;` chain). That inference isn't always possible though
+for example a parameter without a type declaration, or a variable assigned from something the highlighter can't
+follow. For these cases, `highlight()` accepts an optional second argument to explicitly tell it about types:
+
+```php
+$highlighter->highlight($code, [
+    'variables' => [
+        'date' => 'DateTime',            // $date is a DateTime
+        '$zone' => ['DateTimeZone'],     // the leading '$' is optional; multiple candidate types are allowed
+    ],
+    'classes' => [
+        'Blub' => 'Vendor\Blub',         // resolve an otherwise-unresolvable class name
+    ],
+    'functions' => [
+        'blub_create' => 'date_create',  // treat blub_create() like date_create() for linking purposes
+    ],
+]);
+```
+
+Type hints ignore scoping and are always linked to the given type, regardless of where in the code the
+variable/class/function is referenced.
+
 ## Known limitations
 
 - Global constants (as opposed to class constants) are not linked, and `use const` imports are ignored.
 - Union and intersection types are treated the same way: every type contained in them is considered a
   candidate, without honoring the "any of" vs. "all of" semantics.
+- Typed arrays are currently not supported
+- Type inference for classes, interfaces, traits and enums declared in the highlighted source only works when
+  the declaration comes before its use, in source order. A forward reference (using a class before its
+  declaration) is not resolved and can be worked around with an explicit type hint (see above).
 
 ## License
 

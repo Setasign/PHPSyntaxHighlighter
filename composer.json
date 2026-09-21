@@ -1,7 +1,7 @@
 {
     "name": "setasign/php-syntax-highlighter",
     "type": "library",
-    "description": "",
+    "description": "A PHP syntax highlighter, written in PHP, that automatically links classes, methods, class constants and functions to their documentation.",
     "minimum-stability": "stable",
     "license": "MIT",
     "authors": [
