@@ -651,6 +651,11 @@ class LinkCollector extends NodeVisitorAbstract
                 continue;
             }
 
+            if (!isset($currentScope[$varName])) {
+                $this->variableScopes[\array_key_last($this->variableScopes)][$varName] = [];
+                $currentScope = $this->variableScopes[\array_key_last($this->variableScopes)];
+            }
+
             if ($useNode->byRef) {
                 $newScope[$varName] =&
                     $this->variableScopes[\array_key_last($this->variableScopes)][$varName];
